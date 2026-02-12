@@ -1,6 +1,7 @@
 .backup
 .temp
 .private
+build.*
 Gemfile.lock
 
 _site/
