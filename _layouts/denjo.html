@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>电情过去问知识体系</title>
+    <link rel="stylesheet" href="/assets/css/denjo.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="ui-panel">
+        <div class="search-box">
+            <input type="text" id="searchInput" list="yearList">
+            <datalist id="yearList"></datalist>
+            <button onclick="handleSearch()">Search</button>
+        </div>
+        <div class="button-group">
+            <button onclick="handleExpandAll()">Expand All</button>
+            <button onclick="handleCollapseAll()">Collapse All</button>
+        </div>
+    </div>
+
+    <div id="container">
+        <svg id="mindmap"></svg>
+    </div>
+
+    <script src="/assets/js/denjo.js"></script>
+</body>
+</html>

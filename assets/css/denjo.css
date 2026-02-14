@@ -1,0 +1,78 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #0b0f1a;
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.node circle {
+    fill: #0b0f1a;
+    stroke: #38bdf8;
+    stroke-width: 2px;
+    cursor: pointer;
+}
+
+.node text {
+    font-size: 16px;
+    fill: #e2e8f0;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.node-root text {
+    font-size: 18px;
+    font-weight: bold;
+    fill: #60a5fa;
+}
+
+.link {
+    fill: none;
+    stroke: #334155;
+    stroke-width: 1.5px;
+}
+
+.ui-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1000;
+    background: rgba(15, 23, 42, 0.9);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+.search-box {
+    display: flex;
+    gap: 8px;
+}
+
+#searchInput {
+    background: #0f172a;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+    outline: none;
+    width: 180px;
+}
+
+#searchInput:focus { border-color: #38bdf8; }
+#mindmap { width: 100vw; height: 100vh; display: block; }
+button {
+    background: #0284c7;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+button:hover { background: #0ea5e9; }
+.button-group { display: flex; gap: 10px; }
+.button-group button { background: #334155; flex: 1; }
