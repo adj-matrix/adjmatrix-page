@@ -13,7 +13,7 @@ body {
 }
 
 .node text {
-    font-size: 16px;
+    font-size: 18px;
     fill: #e2e8f0;
     pointer-events: none;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
@@ -58,11 +58,13 @@ body {
     padding: 8px 12px;
     color: white;
     outline: none;
-    width: 180px;
+    width: 220px;
 }
 
 #searchInput:focus { border-color: #38bdf8; }
+
 #mindmap { width: 100vw; height: 100vh; display: block; }
+
 button {
     background: #0284c7;
     color: white;
@@ -73,6 +75,19 @@ button {
     font-weight: 600;
     transition: all 0.2s;
 }
+
 button:hover { background: #0ea5e9; }
-.button-group { display: flex; gap: 10px; }
-.button-group button { background: #334155; flex: 1; }
+
+.button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.button-group button {
+    background: #334155;
+    flex: 1 1 auto;
+    min-width: 80px;
+    font-size: 13px;
+    padding: 6px 10px;
+}

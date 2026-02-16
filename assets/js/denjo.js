@@ -962,7 +962,7 @@ const rawData = `电情
 
 const config = {
     vSpace: 40,
-    hSpace: 200,
+    hSpace: 250,
     duration: 400
 };
 
@@ -1138,3 +1138,20 @@ document.getElementById("searchInput").addEventListener("keypress", (e) => {
 window.addEventListener('resize', () => {
     svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
 });
+
+function handleExpandConcepts() {
+    dataRoot.descendants().forEach(d => {
+        if (d.height > 1) {
+            if (d._children) {
+                d.children = d._children;
+                d._children = null;
+            }
+        } else if (d.height === 1) {
+            if (d.children) {
+                d._children = d.children;
+                d.children = null;
+            }
+        }
+    });
+    update(dataRoot);
+}
