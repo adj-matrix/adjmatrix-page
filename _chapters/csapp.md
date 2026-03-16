@@ -4,13 +4,76 @@ title: "CMU 15213: CSAPP 记录速览"
 permalink: /pages/csapp
 ---
 
+...
+
 ## 前期准备
+
+### Download & Docker
 
 项目开始之前，首先还得是**基础设施的搭建**。
 
 个人拒绝在干净的 WSL 里安装老旧的 32 位兼容库，而是手搓了一套舒适的自动化测试流，通过**Dockerfile**封装必要库保持宿主机纯净。并且通过脚本实现了一个聪明的 Task Runner 与各个自己 diy 的任务脚本，自动识别是否需要保持容器开启，与通过 `eval` 和 ANSI 转义序列，将任务脚本里的命令回显在宿主机终端上。
 
-本项目一切工作的 Docker 环境参考如下，可直接参考使用：
+资源获取脚本和本项目一切工作的 Docker 环境参考如下，可直接参考使用：
+
+```sh
+#!/bin/bash
+
+SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." ; pwd)
+DOWNLOAD_DIR="$PROJECT_ROOT/.download"
+SRC_DIR="$PROJECT_ROOT/src"
+
+mkdir -p "$DOWNLOAD_DIR"
+mkdir -p "$SRC_DIR"
+
+BASE_URL="http://csapp.cs.cmu.edu/3e"
+LABS=(
+    "datalab-handout.tar"
+    "bomb.tar"
+    "target1.tar"
+    "archlab-handout.tar"
+    "cachelab-handout.tar"
+    "shlab-handout.tar"
+    "malloclab-handout.tar"
+    "proxylab-handout.tar"
+)
+
+echo "--- CS:APP Lab Setup Start ---"
+echo "Project Root: $PROJECT_ROOT"
+
+for lab in "${LABS[@]}"; do
+    FILE_PATH="$DOWNLOAD_DIR/$lab"
+    TARGET_SUBDIR="$SRC_DIR/${lab%.tar}"
+
+    echo "-----------------------------------------------"
+    echo "Processing: $lab"
+
+    if [ ! -f "$FILE_PATH" ]; then
+        echo "[1/2] Downloading..."
+        wget --no-check-certificate -c "$BASE_URL/$lab" -O "$FILE_PATH"
+        if [ $? -ne 0 ]; then
+            echo "Error: Download failed for $lab"
+            continue
+        fi
+    else
+        echo "[1/2] $lab already exists, skipping download."
+    fi
+
+    if [ ! -d "$TARGET_SUBDIR" ]; then
+        echo "[2/2] Extracting to $TARGET_SUBDIR..."
+        mkdir -p "$TARGET_SUBDIR"
+        tar -xf "$FILE_PATH" -C "$TARGET_SUBDIR"
+        echo "Done!"
+    else
+        echo "[2/2] Target directory already exists, skipping."
+    fi
+done
+
+echo "-----------------------------------------------"
+echo "All Labs Ready in '$SRC_DIR'."
+
+```
 
 ```Dockerfile
 FROM ubuntu:22.04
@@ -21,7 +84,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc-multilib \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /src
+WORKDIR /workspace
 
 ```
 
@@ -79,4 +142,4 @@ WORKDIR /src
 >   if (recip && x > 149) return 0;
 > ```
 
-## Project 2: Waiting for updating ...
+## Project 1: Waiting for updating ...
