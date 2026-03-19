@@ -76,17 +76,32 @@ echo "All Labs Ready in '$SRC_DIR'."
 ```
 
 ```Dockerfile
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS base
+RUN apt-get -y update && \
+    apt-get -y install \
+    --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      git \
+      openssh-client \
+      python3 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    python3 \
-    gcc-multilib \
-    && rm -rf /var/lib/apt/lists/*
+FROM base
+CMD bash
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y update && \
+    apt-get -y install \
+    --no-install-recommends \
+      gcc-multilib \
+      gdb \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
 ```
+
+后续的一些可能涉及 Debug 之类的操作就直接进到 DevContainer 里面去手动 debug 就行了。
 
 ## Project 0: Datalab
 
@@ -142,4 +157,44 @@ WORKDIR /workspace
 >   if (recip && x > 149) return 0;
 > ```
 
-## Project 1: Waiting for updating ...
+## Project 1: Bomb
+
+如果说 Datalab 是强迫你把工程思维降维到 ALU 门级电路，那 Bomblab 就是强迫你**把思维降维到寄存器与内存布局**。虽然说未来在工作中纯手工 Debug 汇编代码的概率微乎其微，但你会去读屎山。这个 Project 的意义在于消除对二进制“屎山”的恐惧，并遇到 Segmentation Fault 时，脑子里能浮现出内存和栈。
+
+不需要太多前置知识，工作性质类似于：对着极其丑陋、充满历史包袱的 x86 CISC 汇编指令，做纯 dirty work 体力活级别的阅读理解。
+
+### GDB
+
+常用的 GDB 指令速查表：
+
+| 分类 | 指令 | 作用描述 | 拆弹实战场景 |
+| :--- | :--- | :--- | :--- |
+| **断点控制** | `break <func>` (或 `b`) | 在某函数或地址打断点 | 一开始必定先执行 `b explode_bomb`，剪断引信。 |
+| **执行控制** | `run <file>` (或 `r`) | 开始运行程序（可带参数文件） | `run ans` 自动加载你已经写好的前面关卡的答案。 |
+| | `stepi` (或 `si`) | 单步执行（进入函数） | 观察某个特定跳转或寄存器变化时使用。 |
+| | `nexti` (或 `ni`) | 单步执行（跳过函数） | 遇到 `call sscanf` 时直接跳过库函数。 |
+| **代码查看** | `disas <func>` | 反汇编某个函数 | `disas phase_1` 直接纵览整个关卡的逻辑。 |
+| | `layout asm` / `layout reg` | 打开 TUI 图形模式 | 实时左右分屏看汇编指令和寄存器的变化。 |
+| **内存/寄存器** | `info registers` (或 `i r`) | 查看所有寄存器当前的值 | 找规律时，看看 `%rax` 或 `%ebx` 里存了什么。 |
+| | `x/s <addr>` | 以**字符串**格式查看内存 | 遇到 `cmp` 或 `strings_not_equal`，直接去读地址里的明文。 |
+| | `x/wx <addr>` / `x/gx` | 以**十六进制字/长字**查看内存 | 分析跳转表。 |
+| | `x/8d <addr>` | 以**十进制**查看连续 8 个内存单元（8改为其他同理） | 打印整数值。 |
+
+### 汇编
+
+前几个阶段的通关过程，基本上就是“找规律”的体力活：
+*   **Phase 1（字符串比较）**：开胃菜。反汇编后找到 `mov $0x40xxxx,%esi`，直接用 `x/s` 查看该地址，答案就在脸上。
+*   **Phase 2（循环与数组）**：观察寄存器的累加与移位操作（如 `add %eax, %eax`），推断出一个 $1, 2, 4, 8, 16, 32$ 的等比数列。
+*   **Phase 3（Switch 跳转表）**：初见 CISC 寻址的丑陋。`jmp *0x40xxxx(,%rax,8)`，解法是用 `x/8gx` 把跳转表打印出来，顺藤摸瓜。
+
+示例的第一阶段 debug 通关过程：
+
+![phase1](/assets/img/csapp/phase1.png#w60)
+
+后续写入答案后，假设文件名为 `ans`，可以直接在 GDB 中 `run ans` 加载进度，避免反复手敲。
+
+phase 1~5 都是坚持着看屎山就都没什么问题的，不过 phase 6 看到最后是真放弃了，汇编语言的**链表节点重排**。在高级语言里极其简单的 `node->next->value` 逻辑，在汇编里变成了满篇的基于偏移量的间接寻址（`*(int **)(piVar1 + 2)`）。最后使用`pyelftools`写一个`python`脚本做控制流二进制分析或`Ghidra`反编译都行，用`pyelftools`的话只能跑出答案但不能直接得到反编译代码，愿意练汇编语言 Debug 的原教旨主义可以坚持看看。而且感觉其实可能直接看可能还更快只不过枯燥了点。
+
+回过头看，这两个 Lab 极度推崇“知其所以然”的底层。虽然确实很酷，但感觉绝大多数情况下这种训练的边际效益正在递减。吃下了这坨 CISC 历史包袱的“屎”，体会过底层硬件执行的物理感，就足够了，只把它作为一次体能训练。
+
+## Project 2: Waiting for updating ...
