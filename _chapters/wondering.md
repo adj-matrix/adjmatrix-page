@@ -32,7 +32,7 @@ permalink: /pages/wondering
 
 一个参考的知识联系图，这是主观化的，不构成任何学习顺序的参考：
 
-![Wondering](/assets/img/wondering.png)
+![Wondering](/assets/img/wondering/wondering.png)
 
 本指南将主要分为以下几个篇章：
 
@@ -42,7 +42,7 @@ permalink: /pages/wondering
 *   **Programming**：从“道”落地为“术”。掌握 C 与 Java 等语言工具，理解网络基础设施，学习如何像工匠一样，将抽象的思想构建为坚实的工程现实。
 *   **Theory-Oriented**：为更深层次的研究做准备。我们将潜入代数结构、随机过程与高维几何的深海，探索那些支撑前沿科技的抽象数学工具。
 
-![Science](/assets/img/science.png#w80)
+![Science](/assets/img/wondering/science.png#w80)
 
 Enjoy!
 
