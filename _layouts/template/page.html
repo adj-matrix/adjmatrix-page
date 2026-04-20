@@ -18,7 +18,21 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" 
           onload="renderMathInElement(document.body, {delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false} ]});"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
+  <script>
+    document.documentElement.classList.add('shiki-pending');
+    window.__shikiBoot = {
+      cancelled: false,
+      maxDelayMs: 1200,
+    };
+    window.setTimeout(() => {
+      if (!document.documentElement.classList.contains('shiki-pending')) {
+        return;
+      }
+      window.__shikiBoot.cancelled = true;
+      document.documentElement.classList.remove('shiki-pending');
+      document.documentElement.classList.add('shiki-skipped');
+    }, window.__shikiBoot.maxDelayMs);
+  </script>
 </head>
 
 <body>
@@ -56,6 +70,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
   <script src="/assets/js/include/jquery.nav.js"></script>
   <script src="/assets/js/template/navigator.js"></script>
+  <script type="module" src="/assets/js/template/shiki.js"></script>
   <script src="/assets/js/template/copy-code.js"></script>
 </body>
 

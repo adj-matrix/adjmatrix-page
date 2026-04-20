@@ -211,7 +211,7 @@ WW组合的本质，就是在你熟悉的Windows系统上，通过 **WSL (Window
 - 设置你的用户名和密码。
 - 安装完成，每当你在VSCode中打开终端，VSCode默认依旧是Windows旧终端，点击右上角新建WSL终端即可，如需修改默认终端，可通过按下`Ctrl + Shift + P` (命令面板)，输入`Terminal: Select Default Profile`，选择你需要的终端。
 
-> 可选安装WSL插件 (未来可能遇到只有纯linux环境的需求时):
+> 可选安装WSL插件 (未来遇到只有纯linux环境的需求时):
 > 打开VSCode，点击左侧的扩展图标，搜索WSL，安装WSL插件。随后根据文档配置，之后即可连接本地WSL环境。
 
 #### 步骤三：安装 C 环境

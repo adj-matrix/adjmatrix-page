@@ -53,8 +53,19 @@ main {
     overflow-y: auto;
 }
 
+.pages main {
+    min-height: 100vh;
+    height: auto;
+}
+
 .pages #frame {
-    margin: 180px auto;
+    position: relative;
+    width: 50%;
+    max-width: 960px;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin: 80px auto;
     padding-bottom: 80px;
 }
 

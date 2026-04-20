@@ -189,8 +189,8 @@ pre.highlight {
   font-style: italic;
 }
 .highlight .err {
-  color: #960050;
-  background-color: #1e0010;
+  color: inherit;
+  background-color: transparent;
 }
 /* Hux: a temp workaround to fix for Coq math symbol */
 .language-coq .highlight .err {
@@ -418,6 +418,80 @@ pre.highlight {
   padding: 25px;
 }
 
+html.shiki-pending .content-wrapper .highlighter-rouge {
+  visibility: hidden;
+}
+
+.shiki-frame .shiki {
+  margin-bottom: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.shiki-frame .shiki code {
+  display: block;
+  white-space: normal;
+}
+
+.shiki-frame .shiki .line {
+  display: block;
+  white-space: pre;
+}
+
+.shiki-frame .shiki .line:empty::before {
+  content: "\00a0";
+}
+
+.shiki-frame .shiki,
+.shiki-frame .shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .shiki-frame .shiki,
+  .shiki-frame .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+}
+
+.shiki-frame .shiki pre,
+.shiki-frame .shiki {
+  padding: 25px;
+}
+
+.shiki-frame .shiki-objdump code {
+  display: block;
+}
+
+.shiki-frame .shiki-objdump .shiki-objdump-line {
+  display: grid;
+  grid-template-columns: 12ch 24ch minmax(0, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+.shiki-frame .shiki-objdump .shiki-objdump-line.is-header {
+  grid-template-columns: 12ch minmax(0, 1fr);
+}
+
+.shiki-frame .shiki-objdump .shiki-objdump-line.is-plain {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shiki-frame .objdump-address,
+.shiki-frame .objdump-bytes {
+  color: #6e7781 !important;
+  white-space: pre;
+}
+
+.shiki-frame .objdump-label,
+.shiki-frame .objdump-asm,
+.shiki-frame .objdump-plain {
+  min-width: 0;
+}
+
 /* --- General code styles from hux-blog.less --- */
 pre,
 .table-responsive {
@@ -436,6 +510,33 @@ kbd,
 pre,
 samp {
   font-family: "Cascadia Code PL SemiLight", Consolas, "Fira Code", Menlo, Monaco, "Courier New", monospace;
+  font-variant-ligatures: common-ligatures contextual discretionary-ligatures;
+  font-feature-settings: "calt" 1, "liga" 1, "dlig" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+:not(pre) > code,
+:not(pre) > kbd,
+:not(pre) > samp {
+  color: #24292f;
+  font-size: 0.85em;
+  line-height: 1.35;
+  padding: 0.2em 0.4em;
+  margin: 0;
+  border: 0;
+  background: rgba(175, 184, 193, 0.2);
+  border-radius: 6px;
+  vertical-align: baseline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+pre,
+.shiki-frame .shiki,
+.shiki-frame .shiki code,
+.shiki-frame .shiki .line {
+  font-variant-ligatures: common-ligatures contextual discretionary-ligatures;
+  font-feature-settings: "calt" 1, "liga" 1, "dlig" 1;
 }
 
 /* --- Copy Code Button Styles --- */
@@ -453,7 +554,8 @@ samp {
     transition: opacity 0.3s;
 }
 
-.highlighter-rouge:hover .copy-code-button {
+.highlighter-rouge:hover .copy-code-button,
+.shiki-frame:hover .copy-code-button {
     opacity: 1;
 }
 
