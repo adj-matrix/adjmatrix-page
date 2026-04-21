@@ -383,11 +383,10 @@ auto BufferManager::ReadBuffer(FileId file_id, BlockId block_id) -> Result<Buffe
   if (!handle.has_value()) return LoadMissOwnerBuffer(tag, registration.state);
   miss_coordinator_->Complete(tag, registration.state, Status::Ok(), handle->frame_id());
   return std::move(handle.value());
+}
 ```
 
-唉，得益于我优秀的编码习惯，看代码和看自然语言一样轻松。我目前的习惯是很喜欢这种“卫函数下降式”的风格的代码，不愧是我。(p≧w≦q)
-
-咳咳，回归正题的话，其实还是一行一行看就好了。不过这样看代码，意思很直接。
+其实看代码已经和看自然语言一样轻松，我目前的习惯是很喜欢这种“卫函数下降式”的风格的代码。一行一行看就好了。不过这样看代码，意思很直接：
 1. 检查 `BufferManager` 初始化是否成功。
 2. 用 `(file_id, block_id)` 组装一个 `BufferTag`。
 3. 先尝试走 resident hit。
@@ -623,7 +622,7 @@ auto BufferManager::ReserveFrameForTag(const BufferTag &tag) -> Result<FrameRese
 
 #### candidate frame 从哪里来？
 
-这一部分的逻辑在 **AcquireReservationFrame** 中，candidate frame 的来源只有两个：
+这一部分的逻辑在 `AcquireReservationFrame` 中，candidate frame 的来源只有两个：
 1. `free_list_`
 2. `replacer_->Victim(...)`
 
@@ -631,19 +630,19 @@ auto BufferManager::ReserveFrameForTag(const BufferTag &tag) -> Result<FrameRese
 
 #### 什么叫成功预留？
 
-真正的预留动作发生在 **TryReserveFrameForTag** 中。这里会锁住目标 frame 对应的 **BufferDescriptor**，检查它当前是否满足接管条件。如果满足，就构造一个 **FrameReservation**，记录这次预留之前的旧页上下文，并把新页安装到页表中，然后把 **descriptor** 推进到 **kLoading** 状态。这意味着：
+真正的预留动作发生在 `TryReserveFrameForTag` 中。这里会锁住目标 frame 对应的 `BufferDescriptor`，检查它当前是否满足接管条件。如果满足，就构造一个 `FrameReservation`，记录这次预留之前的旧页上下文，并把新页安装到页表中，然后把 `descriptor` 推进到 `kLoading` 状态。这意味着：
 - 页表里已经出现了新的 BufferTag -> FrameId
 - 但这个 frame 还没有真正变成 resident page
 - descriptor 此时只是进入了“已经预留、正在装载”的中间状态
 
-这也就是前面提到的页表和 **descriptor** 进入已预留但未就绪状态的来源。
+这也就是前面提到的页表和 `descriptor` 进入已预留但未就绪状态的来源。
 
 #### 为什么还需要返回 FrameReservation？
 
-因为 **FrameReservation** 不是 frame 本身，而是**这次 frame 预留操作附带保存下来的旧状态**。如果被接管的 frame 之前已经装有旧页，那么这里会记录：
-- 旧页的 **BufferTag**
-- 旧页是否 **dirty**
-- 旧页的 **dirty_generation**
+因为 `FrameReservation` 不是 frame 本身，而是**这次 frame 预留操作附带保存下来的旧状态**。如果被接管的 frame 之前已经装有旧页，那么这里会记录：
+- 旧页的 `BufferTag`
+- 旧页是否 `dirty`
+- 旧页的 `dirty_generation`
 
 这样做的目的，是让后续驱逐失败时仍然有机会恢复旧页映射和 descriptor 状态，而不是把原来的页上下文直接丢掉。
 
@@ -653,7 +652,7 @@ auto BufferManager::ReserveFrameForTag(const BufferTag &tag) -> Result<FrameRese
 - 先保存旧页上下文
 - 必要时先刷回旧页
 - 刷回成功后再发起新页读取
-- 失败时还能根据 **reservation** 做恢复
+- 失败时还能根据 `reservation` 做恢复
 
 #### 小结
 
@@ -663,25 +662,25 @@ auto BufferManager::ReserveFrameForTag(const BufferTag &tag) -> Result<FrameRese
 从控制流上看，这一阶段可以先压缩理解为：
 - 先找 candidate frame
 - 尝试预留
-- 如有旧页则记录 **reservation**
+- 如有旧页则记录 `reservation`
 - 如有必要则触发驱逐与刷盘
-- 最终把 **descriptor** 推进到 **kLoading**，为后续异步读做好准备
+- 最终把 `descriptor` 推进到 `kLoading`，为后续异步读做好准备
 
 ### 异步 I/O 完成后
 
-后端完成 I/O 了还要干啥，**BufferManager** 能不能直接歇了。
+后端完成 I/O 了还要干啥，`BufferManager` 能不能直接歇了。
 
-后端完成了，只说明一句话：那 4096 字节已经读进某块内存了。但对 **BufferManager** 来说，这还远远不够。因为它还要负责这些事：
-- 这个 frame 现在能不能从 **kLoading** 变成 **kResident**
-- **descriptor.io_in_flight** 要不要清掉
-- **is_valid** 要不要设成 true
+后端完成了，只说明一句话：那 4096 字节已经读进某块内存了。但对 `BufferManager` 来说，这还远远不够。因为它还要负责这些事：
+- 这个 frame 现在能不能从 `kLoading` 变成 `kResident`
+- `descriptor.io_in_flight` 要不要清掉
+- `is_valid` 要不要设成 true
 - 失败时要不要回滚页表和 frame 状态
 - 等这个页的 joiner 要不要被唤醒
-- owner 最终能不能安全返回 **BufferHandle**
+- owner 最终能不能安全返回 `BufferHandle`
 
 所以**异步 I/O 完成后**还得干一堆收尾。
 
-owner 线程先把页读请求异步提交给 **DiskBackend**，再通过 **completion_dispatcher_** 按 **request_id** 等待完成；等完成后，再把对应 frame 从 **kLoading** 推进到 **kResident**。
+owner 线程先把页读请求异步提交给 `DiskBackend`，再通过 `completion_dispatcher_` 按 `request_id` 等待完成；等完成后，再把对应 frame 从 `kLoading` 推进到 `kResident`。
 
 #### 哪里标志着是异步 I/O 完成后
 
@@ -1112,16 +1111,551 @@ class NoOpTelemetrySink final : public TelemetrySink {
 
 > 当前 TelePath 的遥测层已经实现了**数据面与观测面解耦**的基本结构，但观测结果目前仍以低开销聚合计数为主，距离完整的共享内存事件流还有明显演进空间。未来将对 SDK / monitor plane 展开。
 
-## 写回 / 刷盘完整路径
+## 写回与刷盘完整路径
 
-Waiting for updating
+### 脏页
 
-<!-- 
-  - 脏页如何标记
-  - 何时触发刷盘
-  - 批量刷盘如何组织
-  - 并发下如何保证一致性
--->
+在 buffer pool 语义里，**脏页**就是这个页在内存里被改过，但这些改动还没同步回磁盘。
+
+所以 dirty 的本质是**内存中的内容已经和磁盘上的版本不一致了**。在 TelePath 里，这个状态记录在 BufferDescriptor 里：
+`is_dirty`、`dirty_generation`，我们之前已经见过它们了。
+
+回顾 `BufferHandle::mutable_data()`，它只是转给 `BufferManager::AcquireWritePointer(this)`。而它做的事情本质上只是：
+- 校验 `handle`
+- 获取 `content_latch` 的 unique lock
+- 返回可写指针
+
+它没有改 `is_dirty`，也没有动 `dirty_generation`。现在这版实现里，**拿到写权限**和**正式声明这个页已脏**是两步分开的。这样设计的含义是：你可以拿写锁准备改，但只有当你确认这次写真的改变了页内容时，才调用 `MarkBufferDirty(handle)`，这是个显式协议，不是自动检测。
+
+真正让页变脏的是 `BufferManager::MarkBufferDirty(const BufferHandle &handle)`。
+
+```cpp
+auto BufferManager::MarkBufferDirty(const BufferHandle &handle) -> Status {
+  Status validate_status = ValidateOwnedHandle(handle);
+  if (!validate_status.ok()) return validate_status;
+  Result<bool> dirty_result = MarkFrameDirty(handle.frame_id(), handle.tag());
+  if (!dirty_result.ok()) return dirty_result.status();
+  if (dirty_result.value()) {
+    dirty_page_count_.fetch_add(1, std::memory_order_acq_rel);
+    NotifyCleaner();
+  }
+  return Status::Ok();
+}
+```
+
+这说明它做了三件事：
+1. 先检查这个 handle 合不合法
+2. 真正去改对应 frame 的 dirty 状态
+3. 如果这个页是**第一次从 clean 变 dirty**，就增加全局 `dirty_page_count_`，并通知 cleaner
+
+可见 dirty 标记会影响整个系统的后台刷盘行为。
+
+```cpp
+auto BufferManager::MarkFrameDirty(FrameId frame_id, const BufferTag &tag) -> Result<bool> {
+  BufferDescriptor &descriptor = descriptors_[frame_id];
+  std::lock_guard<std::mutex> guard(descriptor.latch);
+  if (!descriptor.is_valid || descriptor.state != BufferFrameState::kResident || descriptor.tag != tag) return Status::InvalidArgument("buffer handle refers to an invalid frame");
+
+  const bool became_dirty = !descriptor.is_dirty;
+  ++descriptor.dirty_generation;
+  descriptor.is_dirty = true;
+  return became_dirty;
+}
+```
+
+这段特别值得理解。它做了两件核心事：
+- `descriptor.is_dirty = true`：这个很好理解，表示这个 resident page 现在是脏页。
+- `++descriptor.dirty_generation`：这个更有意思。它表示每次显式标脏，都会推进一个版本号。这个版本号后面在 flush 路径里非常重要，因为它用来判断某次 flush 针对的是不是当前这版脏数据；如果 flush 过程中页又被改了，那旧 flush 完成后能不能清 dirty。即是为了防止旧的刷盘结果错误地把新的修改覆盖掉。
+
+接下来看这句：`const bool became_dirty = !descriptor.is_dirty;`
+
+然后只有 `became_dirty == true` 时，外层才：`dirty_page_count_.fetch_add(1, ...)`、`NotifyCleaner();`。这说明：
+- 一个页从 clean -> dirty，只算新增 1 个脏页
+- 之后它再被多次修改，不会反复增加 dirty page count
+
+因为 `dirty_page_count_` 统计的是当前有多少个 resident dirty pages，不是发生了多少次写。这个区别很重要。
+
+所以最后，**脏页怎么来的？**现在可以直接用一句话回答：
+
+页之所以变脏，是因为调用者先通过 `mutable_data()` 获取可写访问，再在确认修改发生后显式调用 `MarkBufferDirty(handle)`，由 `BufferManager` 将对应 frame 的 `is_dirty` 设为 `true`，并推进 `dirty_generation`。
+
+- `mutable_data()` 只是给你写权限
+- `MarkBufferDirty()` 才是真正宣布“这个页脏了”
+
+**总结：**
+
+在 TelePath 中，页不会因为拿到了可写指针就自动变脏。`BufferHandle::mutable_data()` 的作用只是获取页面内容的独占访问权，并返回可写指针；它本身不会修改 `BufferDescriptor` 中的 dirty 状态。真正让页变脏的是调用者随后显式调用 `BufferManager::MarkBufferDirty(handle)`。
+
+`MarkBufferDirty` 会先校验 handle 的合法性，然后进入 `MarkFrameDirty(frame_id, tag)`。在这一层里，系统会锁住对应 frame 的 `BufferDescriptor`，确认该页当前仍是有效的 resident frame，然后把 `is_dirty` 设为 true，并将 `dirty_generation` 加一。这里的 `dirty_generation` 可以理解为这页脏状态的版本号，它的作用不是计数“写了多少字节”，而是帮助后续 flush 路径判断：某次刷盘针对的是否还是当前这版脏数据。
+
+如果一个页是第一次从 clean 变成 dirty，`BufferManager` 还会增加全局的 `dirty_page_count_`，并通知后台 cleaner。也就是说，dirty 标记不仅是一个局部 frame 状态变化，它还会影响整个写回系统何时开始介入。
+
+### 单页写回与刷盘
+
+脏页产生后，真正负责把它写回磁盘的入口是 `FlushBuffer(handle)`。从源码看，这条路径会先校验 handle，再决定是否能使用一个稳定的数据源直接做 snapshot，之后构造 flush task，交给 flush scheduler 提交写请求，最后在 flush 完成时收尾并更新 dirty 状态。
+
+#### FlushBuffer
+
+FlushBuffer 的逻辑很短，但它决定了后面整条刷盘路径怎么走：
+
+```cpp
+auto BufferManager::FlushBuffer(const BufferHandle &handle) -> Status {
+  Status validate_status = ValidateOwnedHandle(handle);
+  if (!validate_status.ok()) return validate_status;
+  if (handle.write_lock_.owns_lock() || handle.read_lock_.owns_lock()) return FlushFrameWithStableSource(handle.frame_id(), handle.data_);
+  return FlushFrame(handle.frame_id());
+}
+```
+
+1. 先确认这个 handle 仍然合法，并且确实属于当前 `BufferManager`
+2. 如果 handle 当前已经持有内容锁，就把这块 frame 内存视作一个稳定的数据源
+3. 如果没有稳定源，就走普通的 `FlushFrame` 路径
+
+这里所谓的 stable source，本质上是：当前调用者已经持有这页的内容锁，因此这次 snapshot 可以直接基于当前可见的内存内容构造，而不用担心拷贝期间被并发修改。
+
+#### FlushFrameWithStableSource 最终进入前台 flush 循环
+
+无论有没有 stable source，最后都会进入 `RunForegroundFlush`：
+
+```cpp
+auto BufferManager::FlushFrameWithStableSource(FrameId frame_id, const std::byte *stable_data) -> Status {
+  if (frame_id >= pool_size_) return Status::InvalidArgument("invalid frame id");
+  return RunForegroundFlush(frame_id, stable_data);
+}
+
+auto BufferManager::RunForegroundFlush(FrameId frame_id, const std::byte *stable_data) -> Status {
+  while (true) {
+    Result<std::shared_ptr<BufferManagerFlushTask>> schedule_result = TryScheduleFlushTask(frame_id, stable_data, nullptr, false);
+    if (!schedule_result.ok()) return schedule_result.status();
+    if (schedule_result.value() == nullptr) return Status::Ok();
+
+    Status wait_status = flush_scheduler_->Wait(schedule_result.value());
+    if (!wait_status.ok()) return wait_status;
+  }
+}
+```
+
+这里可以看到：
+- foreground flush 会不断尝试调度 flush task
+- 如果当前 frame 已经不需要 flush，就直接返回 Ok
+- 如果成功构造了 task，就同步等待这次 flush 完成
+
+所以这里虽然底层是异步写请求，但对调用 `FlushBuffer` 的线程来说，仍然是一个同步等待结果的前台刷盘。
+
+#### Flush task
+
+真正构造 task 的路径是：
+- `TryScheduleFlushTask`
+  - `PrepareFlushTask`
+  - `CaptureFlushSnapshot`
+
+其中最核心的是 PrepareFlushTask：
+
+```cpp
+auto BufferManager::PrepareFlushTask(FrameId frame_id, const std::byte *stable_data, bool *was_busy, bool cleaner_owned, BufferTag *tag, uint64_t *dirty_generation) -> Result<bool> {
+  BufferDescriptor &descriptor = descriptors_[frame_id];
+  std::unique_lock<std::mutex> descriptor_guard(descriptor.latch);
+  Result<bool> wait_result = WaitForPendingFlush(&descriptor, &descriptor_guard, stable_data, was_busy);
+  if (!wait_result.ok()) return wait_result.status();
+  if (!wait_result.value()) return false;
+  if (!buffer_descriptor_state::CanFlushResidentFrame(descriptor)) return false;
+  if (cleaner_owned && buffer_descriptor_state::CleanerMustSkipFlush(descriptor)) {
+    if (was_busy != nullptr) *was_busy = true;
+    return false;
+  }
+
+  buffer_descriptor_state::ReserveFlushSlot(&descriptor, tag, dirty_generation);
+  return true;
+}
+```
+
+这一步干了几件关键的事：
+1. 先等已有的 pending flush 结束
+2. 检查这个 frame 当前是否真的还是一个可刷盘的 resident dirty page
+3. 记录本次 flush 针对的 tag 和 `dirty_generation`
+4. 把 `flush_queued` 标上，等于给这次 flush 占一个槽
+
+这里 `dirty_generation` 很重要。因为 flush 真正完成时，系统会用它判断，这次刷盘写回的，是不是当前这版脏数据。如果 flush 期间页又被改过，generation 会变化，那么旧 flush 完成后就不能直接把 is_dirty 清掉。
+
+#### Snapshot 是怎么捕获的
+
+task 构造后，真正被提交给 backend 的不是 frame 的裸指针，而是一份 snapshot：
+
+```cpp
+auto BufferManager::CaptureFlushSnapshot(FrameId frame_id, const std::byte *stable_data) -> std::vector<std::byte> {
+  std::vector<std::byte> snapshot(page_size_);
+  if (stable_data != nullptr) {
+    std::memcpy(snapshot.data(), stable_data, page_size_);
+    return snapshot;
+  }
+
+  const BufferDescriptor &descriptor = descriptors_[frame_id];
+  std::shared_lock<std::shared_mutex> content_guard(descriptor.content_latch);
+  std::memcpy(snapshot.data(), frame_pool_->GetFrameData(frame_id), page_size_);
+  return snapshot;
+}
+```
+
+也就是说：
+- 如果调用者已经提供了 stable source，就直接拷贝
+- 否则，系统自己拿 `content_latch` 的 shared lock，再从 frame 内存里拷一份 snapshot
+
+所以 flush 写出去的并不是**活的 frame 内存**，而是一次时刻**固定下来的页镜像**。因为真正的写请求是异步的，提交后 frame 内容可能继续变化。如果不先 snapshot，异步写出去的内容就可能不一致。
+
+#### Flush scheduler
+
+构造好 `BufferManagerFlushTask` 后，task 会进入 `BufferManagerFlushScheduler`。它内部维护了：
+- foreground queue
+- background queue
+- 多个 worker 线程
+
+Enqueue 只是把 task 放进对应队列：
+```cpp
+  if (task->cleaner_owned) background_queue_.push_back(task);
+  else foreground_queue_.push_back(task);
+```
+
+worker 线程在 `Run()` 里做的事其实很直接：
+1. 取一个 batch
+2. 对每个 task 调 `disk_backend_->SubmitWrite(task->tag, task->snapshot.data(), page_size_)`
+3. 把返回的 request_id 注册给 `completion_dispatcher_`
+4. 等 completion
+5. 完成 task
+
+所以 flush scheduler 本质就是把 flush task 变成真正的异步写请求，并统一等待这些写请求完成。
+
+#### BufferManager 还会做什么
+
+scheduler 在 task 开始和结束时，都会回调 BufferManager。
+
+开始时调用 BeginFlushTask：
+```cpp
+void BufferManager::BeginFlushTask(const std::shared_ptr<BufferManagerFlushTask> &task) {
+  if (task == nullptr || !task->clear_dirty_on_success) return;
+
+  BufferDescriptor &descriptor = descriptors_[task->frame_id];
+  std::lock_guard<std::mutex> descriptor_guard(descriptor.latch);
+  descriptor.flush_queued = false;
+  descriptor.flush_in_flight = true;
+  descriptor.io_cv.notify_all();
+}
+```
+
+这里把 descriptor 从 `flush_queued = true` 推进到 `flush_in_flight = true`，说明这次 flush 已经真正开始执行。
+
+完成时调用 `FinalizeFlushTask`：
+
+```cpp
+void BufferManager::FinalizeFlushTask( const std::shared_ptr<BufferManagerFlushTask> &task, const Status &flush_status) {
+  if (task->clear_dirty_on_success) {
+    BufferDescriptor &descriptor = descriptors_[task->frame_id];
+    bool cleared_dirty = false;
+    bool should_requeue_cleaner = false;
+    {
+      std::lock_guard<std::mutex> descriptor_guard(descriptor.latch);
+      FinishFlushCompletion(&descriptor, *task, flush_status, &cleared_dirty, &should_requeue_cleaner);
+    }
+    if (cleared_dirty) dirty_page_count_.fetch_sub(1, std::memory_order_acq_rel);
+    if (should_requeue_cleaner) MaybeEnqueueCleanerCandidate(task->frame_id);
+    else if (cleared_dirty) ResetCleanerCandidate(task->frame_id);
+  }
+
+  if (task->cleaner_owned && cleaner_controller_ != nullptr) cleaner_controller_->OnFlushFinished();
+  if (flush_status.ok()) observer_->RecordSuccessfulFlush(task->tag);
+  NotifyCleaner();
+}
+```
+
+这一步才是真正的“收尾”：
+- 清掉 `flush_in_flight`
+- 记录 `last_flush_status`
+- 判断能不能清 `is_dirty`
+- 必要时减少 `dirty_page_count_`
+- 决定要不要把这个 frame 重新交给 cleaner
+- 记录一次 flush telemetry
+
+#### `dirty_generation`
+
+为什么 flush 完成后不能总是直接清 dirty，原因就在 `dirty_generation`。在 FinishFlushCompletion 里，是否能清 dirty，要看：
+- flush 是否成功
+- frame 现在是不是仍然 resident
+- 当前 tag 是否还是 task 对应的 tag
+- 当前 `dirty_generation` 是否仍然等于这次 task 捕获时的 generation
+- 当前页是不是还标记为 dirty
+
+也就是说，如果 flush 期间页又被改过，那么 generation 会变化，旧 flush 完成后就不能把 dirty 清掉。这样才能避免把新修改误当作已经刷盘完成。
+
+#### 小结
+
+所以，一次单页刷盘的完整路径其实是：
+- `FlushBuffer` 进入前台 flush
+- 校验 handle 和 stable source
+- 预留 flush slot，抓取当前 dirty_generation
+- 拷贝一份稳定的 snapshot
+- 构造 `BufferManagerFlushTask`
+- 交给 `FlushScheduler`
+- scheduler 异步提交写请求并等待 completion
+- `BufferManager` 在完成回调里收尾，决定是否真正清 dirty
+
+从本质上说，这条路径解决的是**如何把一个可能仍处于并发访问中的脏页安全地写回磁盘，并保证旧 flush 不会错误覆盖新修改的状态判断**。
+
+### 批量写回与刷盘
+
+`FlushAll` 就是刚刚单页 flush 路径的自然延伸。并没有发明一套新的刷盘机制，它只是把**单页 flush task** 的调度与等待扩展到了整个 buffer pool。
+
+它和刚刚那节共用的还是：
+- `TryScheduleFlushTask`
+- `FlushScheduler`
+- `FinalizeFlushTask`
+
+只是触发对象从`一个 frame`变成了`所有 frame`。
+
+#### FlushAll
+
+```cpp
+auto BufferManager::FlushAll() -> Status {
+  if (!init_status_.ok()) return init_status_;
+  std::vector<std::shared_ptr<BufferManagerFlushTask>> queued_tasks;
+  queued_tasks.reserve(pool_size_);
+  std::vector<FrameId> busy_frames;
+  busy_frames.reserve(pool_size_);
+
+  for (FrameId frame_id = 0; frame_id < pool_size_; ++frame_id) {
+    bool was_busy = false;
+    Result<std::shared_ptr<BufferManagerFlushTask>> schedule_result = TryScheduleFlushTask(frame_id, nullptr, &was_busy, false);
+    if (!schedule_result.ok()) return schedule_result.status();
+    if (was_busy) {
+      busy_frames.push_back(frame_id);
+      continue;
+    }
+    if (schedule_result.value() != nullptr) queued_tasks.push_back(std::move(schedule_result.value()));
+  }
+
+  Status wait_status = WaitForScheduledFlushes(queued_tasks);
+  Status flush_status = FlushBusyFrames(busy_frames);
+  if (!wait_status.ok()) return wait_status;
+  return flush_status;
+}
+```
+
+#### 先遍历整个 buffer pool
+
+`FlushAll` 会从 frame_id = 0 一直扫到 pool_size_ - 1。对每个 frame，它都尝试：`TryScheduleFlushTask(frame_id, nullptr, &was_busy, false)`
+
+`stable_data = nullptr` 说明这里不是基于某个 handle 的稳定源，而是让系统自己决定怎么 `snapshot`，`was_busy` 用来告诉外层这个 frame 当前是不是正忙，`cleaner_owned = false` 说明这不是后台 cleaner 发起的 flush，而是前台显式 `FlushAll`。
+
+#### frame 会被分成三类
+
+遍历每个 frame 后，结果只有三种：
+- **这个 frame 不需要刷**
+  - 不是 resident dirty page
+  - 或当前状态不满足 flush 条件
+  - 这时 `TryScheduleFlushTask` 会返回空 task，FlushAll 直接跳过。
+- **这个 frame 可以立刻调度 flush task**
+  - 这时会拿到一个有效的 `BufferManagerFlushTask`，被放进 `queued_tasks` 后面统一等待。
+- **这个 frame 当前 busy**
+  - 比如它已经有 pending flush，或者当前状态需要稍后再单独处理。
+  - 这时 `was_busy == true`
+  - 它不会立刻进入 `queued_tasks`，而是先进 `busy_frames`，后面再补处理。
+
+所以 `FlushAll` 是先对整个 buffer pool 做一次扫描，把 frame 分成“**可立即调度**”“**当前 busy**”“**无需刷盘**”三类。
+
+#### 为什么要分成 queued_tasks 和 busy_frames
+
+`queued_tasks` 表示：
+- 这些 frame 已经成功构造了 flush task
+- 可以并行交给 flush scheduler
+- 后面只要统一 Wait 即可
+
+`busy_frames` 表示：
+- 这些 frame 当前不适合立即加入这批 task
+- 但 FlushAll 也不能直接忽略它们
+- 所以后面会单独走 `FlushBusyFrames(busy_frames)`
+
+这一层设计说明 `FlushAll` 尽量把当前可并行的先并行发出去，再对忙碌 frame 做补偿式处理。
+
+#### 先等已调度任务，再补刷 busy frame
+
+后半段是：
+```cpp
+  Status wait_status = WaitForScheduledFlushes(queued_tasks);
+  Status flush_status = FlushBusyFrames(busy_frames);
+  if (!wait_status.ok()) return wait_status;
+  return flush_status;
+```
+
+也就是说：
+1. 先等那些已经成功进入 scheduler 的 flush task 完成
+2. 再对之前标记为 busy 的 frame 做补刷
+3. 如果前半段已经出错，就优先返回前半段错误
+4. 否则返回 busy frame 那边的结果
+
+所以 `FlushAll` 先批量调度、再批量等待、再处理遗留 busy frame。
+
+#### FlushAll 复用单页 flush
+
+FlushAll 复用了单页 flush 的哪一部分？几乎全部。它复用的还是：
+- `TryScheduleFlushTask`
+- `PrepareFlushTask`
+- `CaptureFlushSnapshot`
+- `FlushScheduler`
+- `FinalizeFlushTask`
+
+也就是说：
+- 单页 flush 解决**某一页如何安全写回**
+- `FlushAll` 解决**如何把这套机制扩展到整个池子**
+
+`FlushAll` 在机制上完整复用了单页 flush 的 task 构造、scheduler 提交和 finalize 收尾路径，只是把触发范围扩大到了整个 buffer pool。
+
+#### 总结
+
+`FlushAll` 是单页刷盘路径在整个 buffer pool 范围上的自然延伸。它并没有重新实现一套新的写回机制，而是遍历所有 frame，尝试为每个 frame 调度 flush task，然后等待这些 task 完成，并对当前 busy 的 frame 做补充处理。
+
+从源码上看，`FlushAll` 会先扫描整个 buffer pool，并对每个 `frame_id` 调用 `TryScheduleFlushTask(frame_id, nullptr, &was_busy, false)`。根据返回结果，每个 frame 会被分成三类：一类是当前不需要刷盘，直接跳过；一类是已经成功构造出 flush task，可以立即加入本轮批量调度；还有一类是当前处于 busy 状态，暂时不能并入本轮 task，需要后续单独处理。
+
+因此，`FlushAll` 的核心并不是“逐页同步刷盘”，而是先把当前可以并行执行的 flush task 尽量批量发出去，再对遗留的 busy frame 做补偿式处理。其后半段会先等待 `queued_tasks` 全部完成，再调用 `FlushBusyFrames(busy_frames)` 处理那些之前来不及并入调度的 frame。
+
+这说明 `FlushAll` 本质上复用了单页 flush 的全部关键机制，包括 flush slot 预留、snapshot 捕获、flush scheduler 提交以及 flush 完成后的 dirty 状态收尾。它的不同之处，只是把同样的写回逻辑推广到了整个 buffer pool。
+
+### 后台 cleaner
+
+cleaner 共用的是同一套 flush task、scheduler 和 finalize 机制，区别只在于：
+- 谁触发刷盘
+- 触发条件是什么
+- cleaner 为什么会跳过某些页
+
+### Background Cleaner
+
+前面的 `FlushBuffer` 和 `FlushAll` 都是显式触发的写回路径，而 background cleaner 则是一条自动触发的后台刷盘路径。它的目标是在脏页数量升高到一定阈值后，主动把一部分适合刷盘的页异步刷回，避免后续前台路径在驱逐时被大量脏页阻塞。
+
+从结构上看，cleaner 并没有重新实现一套新的刷盘逻辑。它依然复用了前面已经讲过的几部分：
+
+- flush task 构造
+- flush scheduler 提交
+- finalize 阶段的 dirty 状态收尾
+
+它真正新增的是一层后台控制器：`BufferManagerCleanerController`。
+
+#### cleaner 机制
+
+cleaner 是否启用由 `BufferManagerOptions` 控制，其中最关键的是两个水位：
+
+- `dirty_page_high_watermark`
+- `dirty_page_low_watermark`
+
+可以把它们理解成一个简单的**高水位触发、低水位回落**机制，当当前脏页数达到高水位时，cleaner 开始工作，cleaner 不会无限刷下去，而是尽量把脏页数压回到低水位附近。所以 cleaner 的目标不是**刷完全部脏页**，而是控制脏页规模。
+
+脏页产生后，`MarkBufferDirty` 在第一次把某页从 clean 变成 dirty 时，会增加 `dirty_page_count_`，并调用 `NotifyCleaner()`。此外，flush 完成后、dirty page count 下降后，系统也会再次通知 cleaner，让它重新判断当前是否还需要继续调度后台刷盘。也就是说，cleaner 并不是周期性轮询，而是由脏页状态变化主动驱动的。
+
+后台线程的主体逻辑在 `BufferManagerCleanerController::Run()` 中。它会等待一个条件成立：`dirty_page_count >= dirty_page_high_watermark`。一旦达到高水位，cleaner 就会开始计算当前的 flush budget，也就是：当前大概还需要再刷多少页，才能把 dirty page count 压回到低水位附近。如果此时已经有足够多的 cleaner-owned flush 在飞，它会继续等待；如果还没有，就会去 candidate queue 里挑选可以刷的 frame，并通过回调把这些 frame 交给 `BufferManager` 去调度后台 flush。所以 cleaner 做的事，本质上可以概括为：
+1. 监控全局脏页数量
+2. 决定当前是否需要后台写回
+3. 从候选集合中挑选 frame
+4. 通过 `ScheduleCleanerFlush(frame_id)` 发起 cleaner-owned flush
+
+#### candidate queue
+
+cleaner 并不会扫描整个 buffer pool 去“暴力找脏页”，而是维护一套 candidate 机制。只有那些可能适合后台刷盘的页，才会被放进 candidate queue。在 `BufferManager` 里，像下面这些情况会把 frame 加入 cleaner 候选：
+- 某个页被 unpin，且它是 dirty resident page
+- flush 完成后，这个页仍然 dirty，且仍适合后台刷盘
+- cleaner 启动时，会通过 `SeedCleanerCandidates()` 先扫描一轮，把合适的页加入候选
+
+candidate queue 里不仅有 `frame_id`，还有 `generation`。这意味着 cleaner 不只是简单记“这个 frame 曾经是候选”，而是在防止旧候选在状态变化后继续被错误使用。
+
+#### cleaner 为什么不会乱刷正在用的页
+
+在 `PrepareFlushTask(...)` 里，如果这次 flush 是 `cleaner_owned = true`，那么系统还会额外检查当前页是否仍然被 pin 着。如果被 pin，cleaner 就必须跳过，因为后台 cleaner 只负责处理适合在后台写回的页，而不是强行干预活跃的前台访问路径。也就是说：
+- foreground flush 更偏**调用者明确要求刷**
+- cleaner flush 更偏**系统挑合适时机偷偷提前刷**
+
+#### cleaner 和 flush path 关系
+
+cleaner 虽然是后台自动触发，但一旦选中了某个 frame，后面的路径其实和前面几乎一样：
+- `TryScheduleFlushTask`
+- `PrepareFlushTask`
+- `CaptureFlushSnapshot`
+- `EnqueueFlushTask`
+- `FlushScheduler`
+- `FinalizeFlushTask`
+
+所以 cleaner 不是另一套写回系统，而只是前面那套 flush 系统的后台触发器。
+
+#### 小结
+
+background cleaner 本质上解决的是，在前台线程真正需要驱逐或显式刷盘之前，系统能不能提前把一部分脏页以低干扰方式写回，从而减轻后续前台路径的压力。因此，它和 `FlushBuffer`、`FlushAll` 的关系并不是替代，而是互补：
+- FlushBuffer：显式刷某一页
+- FlushAll：显式刷整个池子
+- background cleaner：系统根据脏页水位自动做预清理
+
+### 并发一致性
+
+前面读完请求路径、写回路径和 cleaner 之后，其实会发现 TelePath 的很多复杂度，本质上都来自同一个问题：在并发访问、异步 I/O、后台刷盘和页面驱逐同时发生时，系统如何保证状态不乱。
+
+从当前实现来看，支撑并发一致性的关键不是某一个“大锁”，而是一组相互配合的不变量。
+
+#### page table 命中不等于页一定可用
+
+BufferTag -> FrameId 只是一个索引关系，真正决定这个页当前能不能被安全访问的，仍然是 BufferDescriptor。因此，命中路径不能只查 page table，还必须继续检查：
+
+- `state == kResident`
+- `is_valid == true`
+- `io_in_flight == false`
+- `descriptor.tag == tag`
+
+这意味着页表解决的是**这个逻辑页现在可能在哪个 frame**，而 descriptor 才负责给出**这个 frame 当前到底是不是一个可访问的 resident page**的最终答案。
+
+#### `pin_count` 保证活跃页不会被错误驱逐
+
+一个页只要仍然被 handle 持有，它对应的 frame 就会保持 pin 状态。此时 replacer 不应再把它视为可驱逐对象。只有当 handle `Reset()` 或析构，最终触发 ReleaseFrame -> UnpinFrame，使 `pin_count` 回到 0 之后，这个 frame 才会重新变成可驱逐。
+
+因此，`pin_count` 本质上保护的是：当前仍在被访问的页，不会被后台路径或驱逐路径错误接管。
+
+#### `kLoading` + `io_in_flight` 防止未完成装载的页被提前暴露
+
+当一个 miss owner 已经预留好 frame，并把 descriptor 推进到 `kLoading` 后，这个页在 page table 中已经有映射，但这时它还不能被当作 resident page 返回。只有真正完成读盘并执行 `CompleteLoadedFrame(frame_id)` 后，descriptor 才会变成 `kResident`。
+
+因此，`kLoading` 和 `io_in_flight` 这组状态一起保证：页的逻辑安装和页的物理可用之间可以存在中间态，但这个中间态不会被误当作正常 resident page。
+
+#### `dirty_generation` 防止旧 flush 错误清掉新修改
+
+刷盘路径里最关键的一点是：flush 完成后不能无脑把 `is_dirty` 清成 false。因为在 flush 进行期间，这个页可能又被新的写请求修改了。
+
+因此系统在构造 flush task 时会记录当前的 `dirty_generation`，而在 flush 完成时，只有当：
+
+- 当前页仍然是同一个 tag
+- 当前 generation 仍然等于 task 记录的 generation
+- 当前页仍然是 dirty resident page
+
+这些条件都成立时，才允许清 dirty。
+
+所以 `dirty_generation` 实际上是在保证：旧的刷盘结果不会错误覆盖新的脏状态判断。
+
+#### `content_latch` 保证页内容访问和 snapshot 捕获的一致性
+
+`BufferHandle::data()` 与 `mutable_data()` 并不只是返回一个指针，它们还负责建立对页面内容的受控访问：只读访问持有 shared lock，可写访问持有 unique lock。写回路径在没有 stable source 时，也会通过 `content_latch` 获取 shared lock 后再抓取 snapshot。
+
+因此，页内容的一致性靠 `content_latch` 来保证：读取、写入和 flush snapshot 捕获都发生在受控的内容访问协议之下。
+
+#### cleaner 只是后台触发器，不拥有额外的特权
+
+background cleaner 会主动调度 flush，但它并不能绕过前面所有一致性约束。对于仍被 pin 的页、当前已有 flush 在飞的页，或者状态已经变化的旧 candidate，cleaner 都必须跳过。
+
+这说明 cleaner 虽然是后台组件，但它并不拥有强制刷盘的额外特权，而只是复用了同一套 flush task 和状态检查逻辑。
+
+#### 小结
+
+所以从整体上看，TelePath 的并发一致性通过：
+
+- page table 与 descriptor 的双重校验
+- pin/unpin 生命周期
+- loading / resident 状态机
+- dirty generation
+- content latch
+- cleaner 与 foreground flush 的统一状态约束
+
+共同维持的。
+
+换句话说，这个系统真正难的地方，不是在**怎么读页、怎么写页**，而是在这些路径并发交叠时，如何保证每个状态转换都仍然成立。
 
 ## Buffer Handle
 
